@@ -1,0 +1,2 @@
+this is the first time i stopped normalizing the si and sj after calculation, 
+and also started dividing delta_qi by 784

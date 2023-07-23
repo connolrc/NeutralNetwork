@@ -1,0 +1,18 @@
+alpha = .7
+eta = .1
+rho_target = .01
+gamma = 3
+lagrange = .01
+
+hidden neurons = 25
+fi(si) = f2
+fj(sj) = ELU
+
+normWeights() on weights
+normalize() on biases
+
+
+Jq values
+trainset = 0.172281
+testset04 = 0.172546
+testset59 = .173221

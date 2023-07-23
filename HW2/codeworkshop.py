@@ -1,0 +1,26 @@
+import numpy as np
+import matplotlib as mpl
+
+# a = np.matrix([1, 2, 3, 4])
+# b = np.matrix([2, 2, 2, 2])
+# print(a)
+# print()
+# print(b)
+# print()
+# #print(a * b)
+# print()
+# #print(b * a)
+# print()
+# print(a * b.transpose())
+# print()
+# print(np.matmul(a, b.transpose()))
+# print()
+# print(b.transpose() * a)
+# print()
+# print(np.matmul(b.transpose(), a))
+# print()
+# print(a.transpose() * b)
+# print()
+# print(b * a.transpose())
+
+print(mpl.colors.get_named_colors_mapping().keys())

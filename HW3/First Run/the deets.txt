@@ -1,0 +1,4 @@
+20 epochs
+i think alpha = .4, eta = .001
+gaussian weight initialization
+GOD IT FUCKING SUCKED

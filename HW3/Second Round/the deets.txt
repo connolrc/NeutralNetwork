@@ -1,0 +1,6 @@
+epochs = 20 or maybe 21
+eta = .001
+alpha = .3
+op_H = .75
+op_L = .25
+stoch is <= .5
