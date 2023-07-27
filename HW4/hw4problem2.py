@@ -12,27 +12,28 @@ import pickle
 
 DEBUG_FLAG = True
 
-# ******************************************
-# *** DICTIONARY FOR TERMS AND VARIABLES *** 
-# ******************************************
-# x : input (X is total amount)
-# y : output (Y is total amount, same as X)
-# h : hidden layer 
-# w : weights (-0.061 < w < 0.061) [784, 100, 10]
-#     each w array has num rows equal to num of neurons in next layer, 
-#     num cols equal to num of neurons in current layer 
-# w0 : bias weights, 2D array in program, num rows equal to total layers, 
-#      num cols equal to total num neurons in next layer
-# eta : learning factor
-# alpha : momentum, velocity
-# q : index for image in dataset
-# i (l) : number of output neurons (output space dimension, L is total, i or l is iterator)
-# j (m) : number of hidden neurons (hidden space dimension, M is total, j or m is iterator)
-# k (n) : number of input neurons (input space dimension, N is total, k or n is iterator)
-# s : net input / pre-activation values, sjk = wj1 * x1 + wj2 * x2 + ... + wjk * xk + w0j
-# f(s) : activation function, f(s) = a * tanh(b * s)
-# J : summation of (real y for kth output neuron for ith input - estimated y for the same)^2
-
+"""
+******************************************
+*** DICTIONARY FOR TERMS AND VARIABLES *** 
+******************************************
+x : input (X is total amount)
+y : output (Y is total amount, same as X)
+h : hidden layer 
+w : weights (-0.061 < w < 0.061) [784, 100, 10]
+    each w array has num rows equal to num of neurons in next layer, 
+    num cols equal to num of neurons in current layer 
+w0 : bias weights, 2D array in program, num rows equal to total layers, 
+     num cols equal to total num neurons in next layer
+eta : learning factor
+alpha : momentum, velocity
+q : index for image in dataset
+i (l) : number of output neurons (output space dimension, L is total, i or l is iterator)
+j (m) : number of hidden neurons (hidden space dimension, M is total, j or m is iterator)
+k (n) : number of input neurons (input space dimension, N is total, k or n is iterator)
+s : net input / pre-activation values, sjk = wj1 * x1 + wj2 * x2 + ... + wjk * xk + w0j
+f(s) : activation function, f(s) = a * tanh(b * s)
+J : summation of (real y for kth output neuron for ith input - estimated y for the same)^2
+"""
 
 # f : lambda function for convenience within larger function
 #     according to Le Cun's suggestions, a = 1.7159 and b = 2/3
@@ -54,21 +55,49 @@ ELUprime = lambda s : 1 if s >= 0 else .05 * math.pow(math.e, s)
 # used to normalize a vector of values between -1 and 1
 normalize = lambda lst : [((el - min(lst)) / (max(lst) - min(lst))) * 2 - 1 for el in lst]
 
-# full function version for normalizing weight arrays according to overall
-# max and min, rather than the max and min of the sublist
-def normWeights(lst): 
-    o_max = np.nanmax(lst)
-    o_min = np.nanmin(lst)
-    norm_w = []
-    for sublist in lst: 
-        norm_w += [[((el - o_min) / (o_max - o_min)) * 2 - 1 for el in sublist]]
-    return norm_w
 
-# CLASS DEFINITION FOR A BACKPROPAGATING NEURAL NETWORK WITH 1 HIDDEN LAYER
+def normWeights(lst): 
+	"""
+ 	Full function version for normalizing weight arrays according to overall
+	max and min, rather than the max and min of the sublist. 
+
+	Parameters
+	---------------------------------------------------------
+	lst : a 2D list containing a layer of weights. 
+ 
+	Output
+	---------------------------------------------------------
+	norm_w : a 2D list containing the normalized layer of weights. 
+	"""
+ 
+	o_max = np.nanmax(lst)
+	o_min = np.nanmin(lst)
+	norm_w = []
+	for sublist in lst: 
+		norm_w += [[((el - o_min) / (o_max - o_min)) * 2 - 1 for el in sublist]]
+	return norm_w
+
+
 class NeuralNetwork: 
-    # init (constructor) function
+    """
+    Backpropagating neural network with 1 hidden layer.     
+    """
+    
     def __init__(self, total_inputs = 784, total_hidden = 196, total_outputs = 784):
-                 # weights_jk = None, weights_ij = None, biases_jk = None, biases_ik = None):
+        """
+        NeuralNetwork constructor method. Calls weightsInit(). 
+
+        Parameters
+        ---------------------------------------------------------------
+        total_inputs : the total number of input neurons, which is how 
+                       many pixels are in an image. Defaults to 784. 
+                       (Ideally a square number, for heat mapping.)
+        total_hidden : the total number of neurons in the hidden layer. 
+                       Defaults to 196. (Also ideally a square number.)
+        total_outputs : the total number of output neurons. Defaults to
+                        784. (Also ideally a square number.)
+        """
+        # weights_jk = None, weights_ij = None, biases_jk = None, biases_ik = None):
         self.N = total_inputs 
         self.M = total_hidden
         self.L = total_outputs
@@ -77,9 +106,23 @@ class NeuralNetwork:
         self.weightsInit()
         
     
-    # method to preload weights into the network from a text file, given file name,
-    # rather than randomly generating and training weights
     def preloadWeights(self, file_wjk = None, file_wij = None, file_w0jk = None, file_w0ij = None): 
+        """
+        Method to preload weights into the network from a text file, given file name,
+        rather than randomly generating and training weights. 
+
+        Parameters
+        ------------------------------------------------------------------
+        file_wjk : the name of the text file containing the input-to-
+                   hidden weights. Defaults to None. 
+        file_wij : the name of the text file containing the hidden-to-
+                   output weights. Defaults to None. 
+        file_w0jk : the name of the text file containing the input-to-
+                    hidden weight biases. Defaults to None. 
+        file_w0ij : the name of the text file containing the hidden-to-
+                    output weight biases. Defaults to None. 
+        """
+        
         if file_wjk != None: 
             self.w[0] = convertFileToList2D(file_wjk)
         if file_wij != None: 
@@ -90,13 +133,18 @@ class NeuralNetwork:
             self.w0[1] = convertFileToList1D(file_w0ij, "float")
     
 
-    # intialize the weights according to how many hidden neurons desired
-    # using Xavier initialization, normal distribution between -a and a
-    # where a ~ sqrt(6 / Ns + Nt), Ns = total neurons in source layer and
-    # Nt = total neurons in target layer
-    # OKAY ACTUALLY using a uniform distribution -a to a, a = sqrt(3/N)
-    # ACTUALLYYYY it's the Gaussian one right now
     def weightsInit(self): 
+        """
+        Intialize the weights according to how many hidden neurons desired
+        using Xavier initialization: 
+            - normal distribution between -a and a, where a ~ sqrt(6 / Ns + Nt)
+            - Ns = total neurons in source layer 
+            - Nt = total neurons in target layer
+            
+        OKAY ACTUALLY using a uniform distribution -a to a, a = sqrt(3/N)
+        
+        ACTUALLYYYY it's the Gaussian one right now
+        """
         num_weight_sets = 2
         
         # intialize empty weights array, to be 3D
@@ -131,12 +179,22 @@ class NeuralNetwork:
         np.copyto(self.w0_init[0], self.w0[0])
         np.copyto(self.w0_init[1], self.w0[1])
 
-    # the preactivation function for the calculating the hidden layer values
-    # INPUT PARAMETERS
-    # xq : input from input layer x, q signifying specific image in dataset
-    # OUTPUT RETURN 
-    # sqj : the preactivation values for hidden neurons for current image q
+    
     def preActivFuncHidden(self, xq): 
+        """
+        The preactivation function for the calculating the hidden 
+        layer values. 
+    
+        Parameters
+        ----------------------------------------------------------
+        xq : input from input layer x, q signifying specific image 
+             in dataset. 
+        
+        Output
+        ----------------------------------------------------------
+        sqj : the preactivation values for hidden neurons for 
+              current image q. 
+        """
         # initialize preactivation values for hidden layer, sqj, as list
         sqj = [0.0] * self.M
                 
@@ -157,13 +215,23 @@ class NeuralNetwork:
             
         return sqj
         
-    # activation function for calculating the hidden layer values 
-    # f(s) : activation function
-    # INPUT PARAMETERS 
-    # q : current image in the dataset
-    # OUTPUT RETURN
-    # hq : the hidden neurons' values for current image q
+    
     def activFuncHidden(self, q, h_idxs = None):
+        """
+        Activation function for calculating the hidden layer values. 
+    
+        Terminology
+        ------------------------------------------------------------
+        f(s) : activation function.
+        
+        Parameters
+        ------------------------------------------------------------
+        q : current image in the dataset.
+        
+        Output
+        ------------------------------------------------------------
+        hq : the hidden neurons' values for current image q.
+        """
         # if dropout is enabled, h_idxs will be passed in as 
         # randomly chosen hidden neurons to tune to this image.
         # if dropout is not enabled, then set h_idxs to simply
@@ -185,12 +253,20 @@ class NeuralNetwork:
             
         return hq
     
-    # the preactivation function for the calculating the hidden layer values
-    # INPUT PARAMETERS
-    # q : current image in dataset
-    # OUTPUT RETURN 
-    # sqi : the preactivation values for output neurons for current image q
+
     def preActivFuncOutput(self, q): 
+        """
+        The preactivation function for the calculating the hidden layer values.
+        
+        Parameters
+        -----------------------------------------------------------------------
+        q : current image in dataset.
+
+        Output
+        -----------------------------------------------------------------------
+        sqi : the preactivation values for output neurons for current image q.
+        """
+        
         # initialize preactivation values for output, sqi, as list
         sqi = [0.0] * self.L 
                 
@@ -211,11 +287,24 @@ class NeuralNetwork:
             
         return sqi
         
-    # activation function for calculating the hidden layer values 
-    # f(s) : activation function
-    # INPUT PARAMETERS 
-    # q : current image in the dataset
+        
     def activFuncOutput(self, q):
+        """
+        This is the activation function for calculating the 
+        output layer values. 
+        
+        Terminology
+        --------------------------------------------------
+        f(s) : activation function
+            
+        Parameters
+        --------------------------------------------------
+        q : current image in the dataset
+        
+        Output
+        --------------------------------------------------
+        yq : the result of the activation function, f(s). 
+        """
         # initialize hidden layer neurons as list
         yq = []
         
@@ -227,11 +316,17 @@ class NeuralNetwork:
             
         return yq
                 
-    
-    # adjust weights using backpropagation, momentum 
-    # INPUT PARAMETERS
-    # q : current image in the dataset 
+     
     def adjustWeights(self, q, q_idxs): 
+        """
+        adjust weights using backpropagation, momentum 
+        
+        Parameters
+        -------------------------------------------------------
+        q : current image in the dataset in the form of a list. 
+        q_idxs : a list of the elements of q for which to use 
+                 in the rho calculations. 
+        """
         
         # reset rho for this image
         self.rho = [0.0] * self.M
@@ -317,21 +412,36 @@ class NeuralNetwork:
         self.w[1] = normWeights(self.w[1])
         self.w0[0] = normalize(self.w0[0])
         self.w0[1] = normalize(self.w0[1])
-            
-    # define function for training the neural network
-    # INPUT PARAMETERS
-    # x : the input dataset for training the neural network
-    # ytrue : the answer key for x
-    # epochs : the number of times to run through the dataset to train
-    # eta : learning rate, coefficient of weight adjustment 
-    # alpha : momentum, velocity
-    # op_H : operating parameter such that yi >= H is considered
-    #        a match for yi = +1
-    # op_L : operating parameter such that yi <= L is considered
-    #        a match for yi = 0 or -1
+        
+    
     def run(self, x, ytrue, training = False, epochs = 125, stoch = True, dropout = False, 
             eta = .001, alpha = .3, op_H = .75, op_L = .25, gamma = 1, rho_target = .01, lagrange = .001): 
-        self.x = [ELU(image) for image in x] # NOTE: I haven't started a run since changing this yet
+        """
+        Define function for training the neural network.
+        
+        Parameters
+        ----------------------------------------------------------------
+        x : the input dataset for training the neural network
+        ytrue : the answer key for x. 
+        training : boolean flag that when set to False, will not train 
+                   the hidden neurons. Defaults to False. 
+        epochs : the number of times to run through the dataset to train
+        stoch : boolean flag that determines if the network trains 
+                stochastically. Defaults to True.
+        dropout : boolean flag that determines if the network runs with
+                  dropout. Defaults to False. 
+        eta : learning rate, coefficient of weight adjustment. 
+        alpha : momentum, velocity. 
+        op_H : operating parameter such that yi >= H is considered
+               a match for yi = +1. 
+        op_L : operating parameter such that yi <= L is considered
+               a match for yi = 0 or -1. 
+        gamma : constant.
+        rho_target : constant.
+        lagrange : constant.
+        """
+        # self.x = [ELU(image) for image in x] # NOTE: I haven't started a run since changing this yet
+        self.x = [[ELU(pixel) for pixel in image] for image in x]
         self.ytrue = ytrue
         self.eta = eta
         self.alpha = alpha
