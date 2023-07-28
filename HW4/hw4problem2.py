@@ -57,25 +57,25 @@ normalize = lambda lst : [((el - min(lst)) / (max(lst) - min(lst))) * 2 - 1 for 
 
 
 def normWeights(lst): 
-	"""
- 	Full function version for normalizing weight arrays according to overall
-	max and min, rather than the max and min of the sublist. 
+    """
+     Full function version for normalizing weight arrays according to overall
+    max and min, rather than the max and min of the sublist. 
 
-	Parameters
-	---------------------------------------------------------
-	lst : a 2D list containing a layer of weights. 
+    Parameters
+    ---------------------------------------------------------
+    lst : a 2D list containing a layer of weights. 
  
-	Output
-	---------------------------------------------------------
-	norm_w : a 2D list containing the normalized layer of weights. 
-	"""
+    Output
+    ---------------------------------------------------------
+    norm_w : a 2D list containing the normalized layer of weights. 
+    """
  
-	o_max = np.nanmax(lst)
-	o_min = np.nanmin(lst)
-	norm_w = []
-	for sublist in lst: 
-		norm_w += [[((el - o_min) / (o_max - o_min)) * 2 - 1 for el in sublist]]
-	return norm_w
+    o_max = np.nanmax(lst)
+    o_min = np.nanmin(lst)
+    norm_w = []
+    for sublist in lst: 
+        norm_w += [[((el - o_min) / (o_max - o_min)) * 2 - 1 for el in sublist]]
+    return norm_w
 
 
 class NeuralNetwork: 
@@ -595,8 +595,11 @@ class NeuralNetwork:
                 else: 
                     plt.show()
             
-    # define loss function, Mean-Squared Error (J2)
-    def MSE(self): 
+            
+    def MSE(self):
+        """
+        The loss function, Mean-Squared Error (J2). 
+        """
         # an array of the loss for each epoch
         self.Jq = []
         
@@ -623,10 +626,36 @@ class NeuralNetwork:
     # the up-to-date loss value
     # epoch parameter is default set to -1 to reverse-index the last element
     def getJq(self, epoch = -1):
+        """
+        Returns the average of the last sublist element of self.Jq, the 
+        up-to-date loss value. 
+
+        Parameters
+        ----------------------------------------------------------------
+        epoch : to use as the index of self.Jq. The default is -1, to 
+                reverse-index the last element. Default is always used
+                in the written code, currently. 
+    
+        Output
+        ----------------------------------------------------------------
+        The average loss value for the given epoch (default the latest).
+        """
         return np.average(self.Jq[epoch])
     
     # error fraction calculator
     def errFrac(self, q = None):
+        """
+        Error fraction calculator. 
+        
+        Parameters
+        --------------------------------------------------------
+        q : a given image in the dataset? Defaults to self.Q.
+        
+        Output
+        --------------------------------------------------------
+        errFrac : the error fraction, total number of wrong
+                  digit classifications divided by total digits.
+        """
         errs = 0
         if q == None: 
             q = self.Q
@@ -637,14 +666,21 @@ class NeuralNetwork:
             
         return errs / total
 
-    # enforce the binary threshold parameters op_H and op_L on given list lst, 
-    # so that all elements of lst >= op_H are set to 1 and all elements of 
-    # lst <= op_L are set to 0. the resultant list is returned as a new list. 
-    # INPUT PARAMETERS 
-    # lst : the given list to enforce the binary thresholds on 
-    # OUTPUT RETURN
-    # lst_bin : new list for which the binary threshold parameters are enforced
+    
     def enforceBinary(self, lst): 
+        """
+        Enforce the binary threshold parameters op_H and op_L on given list lst, 
+        so that all elements of lst >= op_H are set to 1 and all elements of 
+        lst <= op_L are set to 0. The resultant list is returned as a new list. 
+        
+         Parameters
+        --------------------------------------------------------------------------
+        lst : the given list to enforce the binary thresholds on. 
+        
+         Output
+        --------------------------------------------------------------------------
+        lst_bin : new list for which the binary threshold parameters are enforced.
+         """
         lst_bin = []
         
         for el in lst: 
@@ -657,8 +693,16 @@ class NeuralNetwork:
                 
         return lst_bin      
       
-    # plot randomly selecteed 20 hidden neurons as heatmaps
+    
     def plotFeatures(self, colormap="bone"): 
+        """ 
+        Plot randomly selecteed 20 hidden neurons as heatmaps.
+        
+        Parameters
+        --------------------------------------------------------
+        colormap : defines the color scheme of the plots. 
+                   Defaults to "bone". 
+        """
         # generate 20 random, unique numbers to use as indices for the input/output neurons 
         # feats = [i for i in range(20)]
         feats = [int(el) for el in np.random.choice(self.M, min(20, self.M), replace=False)]
@@ -677,9 +721,17 @@ class NeuralNetwork:
         plt.suptitle("Figure 2.4: Sample Hidden Neurons' Features", fontweight="bold", fontsize=11)
         
     
-    # randomly chooses 8 samples from the set to plot the original input image
-    # and the reconstructed output image as heatmaps
     def plotSampleOutputs(self, origColor = "bone", outputColor = "bone"): 
+        """
+        Randomly chooses 8 samples from the set to plot the original input image
+        and the reconstructed output image as heatmaps. 
+     
+        Parameters
+        -------------------------------------------------------------------------
+        origColor : the color scheme for the original images. Defaults to "bone".
+        outputColor: the color scheme for the output plot. Defaults to "bone". 
+        """
+        
         samples = [int(el) for el in np.random.choice(self.Q, 8, replace=False)]
         plt.figure()
         for ii in range(8): 
@@ -703,9 +755,15 @@ class NeuralNetwork:
             
             plt.suptitle("Figure 2.5: Original and Reconstructed Image Comparison", fontweight="bold", fontsize=11)
         
-    # plots all the features as heatmaps in one figure as subplots
-    # THIS HAS TO BE HARDCODED FOR THE SUBPLOT ARRANGEMENTS
+    
     def plotAllFeatures(self):   
+        """
+        Plots all the features as heatmaps in one figure as subplots.
+        
+        THIS HAS TO BE HARDCODED FOR THE SUBPLOT ARRANGEMENTS.
+      
+        TODO: Is this true though? I'll have to check. 
+        """
         plt.figure()
         for hel in range(self.M): 
             plt.subplot(int(math.sqrt(self.M)), int(math.sqrt(self.M)), hel + 1)
@@ -715,9 +773,41 @@ class NeuralNetwork:
             plt.yticks([])
             
 
+    def plotAllOutputs(self, outputColor = "bone"): 
+        """
+        Plots all the outputs as heatmaps in two figures as heatmaps. Hardcoded
+        for a set of 2000 images, putting 1000 in each figure.  
+     
+        Parameters
+        -------------------------------------------------------------------------
+        outputColor: the color scheme for the output plot. Defaults to "bone". 
+        """
+        
+        plt.figure()
+        for q in range(self.Q // 2): 
+            if type(self.y[q]) == list:
+                plt.subplot(20, 50, q + 1)
+                plt.imshow(np.transpose(np.reshape(self.y[q], (28, 28))), cmap=outputColor)
+                plt.xticks([])
+                plt.yticks([])
+        
+        plt.suptitle("Output Heatmaps 1-1000", fontweight="bold", fontsize=11)
+        
+        plt.figure()
+        for q in range(self.Q // 2, self.Q): 
+            if type(self.y[q]) == list: 
+                plt.subplot(20, 50, (q + 1) % 1000)
+                plt.imshow(np.transpose(np.reshape(self.y[q], (28, 28))), cmap=outputColor)
+                plt.xticks([])
+                plt.yticks([])
+                
+        plt.suptitle("Output Heatmaps 1001-2000", fontweight="bold", fontsize=11)
             
-    # plot input-to-hidden layer weights for each number as heat map images
+    
     # def plotHeatmapsWIJ(self): 
+        # """
+          # Plot input-to-hidden layer weights for each number as heat map images. 
+          # """
     #     plt.figure()
     #     for ii in range(self.L):
     #         plt.subplot(5, 2, ii + 1)
@@ -726,8 +816,11 @@ class NeuralNetwork:
         
     #     plt.suptitle("Weight Heatmaps for Digits", loc="center", fontweight="bold")
     
-    # plot the J2 loss and error fraction 
+    
     def plotStats(self): 
+        """
+        Plot the J2 loss and error fraction. 
+        """
         if len(self.Jq) > 1: 
             plt.figure()
             # plt.subplot(2, 1, 1)
