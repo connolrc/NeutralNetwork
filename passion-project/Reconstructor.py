@@ -1,16 +1,60 @@
-
+import random
 from functions import *
 
 DEBUG_FLAG = True
 
-class NeuralNetwork: 
+# f : lambda function for convenience within larger function
+#     according to Le Cun's suggestions, a = 1.7159 and b = 2/3
+#     define larger function to perform activation on every neuron
+# fprime : the derivative of f
+
+f1 = lambda s : math.tanh(s)
+f1prime = lambda s : 1 - math.pow(f1(s), 2)
+
+f2 = lambda s : 1.7159 * math.tanh((2/3) * s)
+f2prime = lambda s : 1.1439 / math.pow(math.cosh((2/3) * s), 2)
+
+f3 = lambda s : .4 * math.tan(s + .2) - .08
+f3prime = lambda s : 2 / (5 * math.pow(math.cos(s + .2), 2))
+
+# f = f2
+# fprime = f2prime
+
+# Extended Linear Unit (modified ReLU)
+ELU = lambda s : min(s, 1) if s >= 0 else .05 * (math.pow(math.e, s) - 1)
+ELUprime = lambda s : 1 if s >= 0 else .05 * math.pow(math.e, s)
+
+# used to normalize a vector of values between -1 and 1
+normalize = lambda lst : [((el - min(lst)) / (max(lst) - min(lst))) * 2 - 1 for el in lst]
+
+class Reconstructor: 
     """
-    Backpropagating neural network with 1 hidden layer.     
+    Backpropagating neural network with 1 hidden layer.  
+    
+    Dictionary for Terms and Variables
+    --------------------------------------------------------------------------------------------
+    x : input (X is total amount)
+    y : output (Y is total amount, same as X)
+    h : hidden layer 
+    w : weights (-0.061 < w < 0.061) [784, 100, 10]
+        each w array has num rows equal to num of neurons in next layer, 
+        num cols equal to num of neurons in current layer 
+    w0 : bias weights, 2D array in program, num rows equal to total layers, 
+        num cols equal to total num neurons in next layer
+    eta : learning factor
+    alpha : momentum, velocity
+    q : index for image in dataset
+    i (l) : number of output neurons (output space dimension, L is total, i or l is iterator)
+    j (m) : number of hidden neurons (hidden space dimension, M is total, j or m is iterator)
+    k (n) : number of input neurons (input space dimension, N is total, k or n is iterator)
+    s : net input / pre-activation values, sjk = wj1 * x1 + wj2 * x2 + ... + wjk * xk + w0j
+    f(s) : activation function, f(s) = a * tanh(b * s)
+    J : summation of (real y for kth output neuron for ith input - estimated y for the same)^2   
     """
     
-    def __init__(self, total_inputs = 784, total_hidden = 196, total_outputs = 784):
+    def __init__(self, total_inputs: int = 784, total_hidden: int = 196, total_outputs: int = 784):
         """
-        NeuralNetwork constructor method. Calls weightsInit(). 
+        Reconstructor constructor method. Calls weightsInit(). 
 
         Parameters
         ---------------------------------------------------------------
@@ -22,7 +66,7 @@ class NeuralNetwork:
         total_outputs : the total number of output neurons. Defaults to
                         784. (Also ideally a square number.)
         """
-        # weights_jk = None, weights_ij = None, biases_jk = None, biases_ik = None):
+        
         self.N = total_inputs 
         self.M = total_hidden
         self.L = total_outputs
@@ -31,7 +75,8 @@ class NeuralNetwork:
         self.weightsInit()
         
     
-    def preloadWeights(self, file_wjk = None, file_wij = None, file_w0jk = None, file_w0ij = None): 
+    def preloadWeights(self, 
+                       file_wjk: str = None, file_wij: str = None, file_w0jk: str = None, file_w0ij: str = None): 
         """
         Method to preload weights into the network from a text file, given file name,
         rather than randomly generating and training weights. 
@@ -105,7 +150,7 @@ class NeuralNetwork:
         np.copyto(self.w0_init[1], self.w0[1])
 
     
-    def preActivFuncHidden(self, xq): 
+    def preActivFuncHidden(self, xq: list[float]): 
         """
         The preactivation function for the calculating the hidden 
         layer values. 
@@ -115,7 +160,7 @@ class NeuralNetwork:
         xq : input from input layer x, q signifying specific image 
              in dataset. 
         
-        Output
+        Returns
         ----------------------------------------------------------
         sqj : the preactivation values for hidden neurons for 
               current image q. 
@@ -141,7 +186,7 @@ class NeuralNetwork:
         return sqj
         
     
-    def activFuncHidden(self, q, h_idxs = None):
+    def activFuncHidden(self, q: int, h_idxs: list[int] = None):
         """
         Activation function for calculating the hidden layer values. 
     
@@ -153,7 +198,7 @@ class NeuralNetwork:
         ------------------------------------------------------------
         q : current image in the dataset.
         
-        Output
+        Returns
         ------------------------------------------------------------
         hq : the hidden neurons' values for current image q.
         """
@@ -179,7 +224,7 @@ class NeuralNetwork:
         return hq
     
 
-    def preActivFuncOutput(self, q): 
+    def preActivFuncOutput(self, q: int): 
         """
         The preactivation function for the calculating the hidden layer values.
         
@@ -187,7 +232,7 @@ class NeuralNetwork:
         -----------------------------------------------------------------------
         q : current image in dataset.
 
-        Output
+        Returns
         -----------------------------------------------------------------------
         sqi : the preactivation values for output neurons for current image q.
         """
@@ -213,7 +258,7 @@ class NeuralNetwork:
         return sqi
         
         
-    def activFuncOutput(self, q):
+    def activFuncOutput(self, q: int):
         """
         This is the activation function for calculating the 
         output layer values. 
@@ -226,7 +271,7 @@ class NeuralNetwork:
         --------------------------------------------------
         q : current image in the dataset
         
-        Output
+        Returns
         --------------------------------------------------
         yq : the result of the activation function, f(s). 
         """
@@ -242,13 +287,14 @@ class NeuralNetwork:
         return yq
                 
      
-    def adjustWeights(self, q, q_idxs): 
+    def adjustWeights(self, q: int, q_idxs: list[int]): 
         """
-        adjust weights using backpropagation, momentum 
+        Adjust weights using backpropagation and momentum. 
         
         Parameters
         -------------------------------------------------------
-        q : current image in the dataset in the form of a list. 
+        q : number of the current image in the dataset, index 
+            of self.x. 
         q_idxs : a list of the elements of q for which to use 
                  in the rho calculations. 
         """
@@ -333,13 +379,13 @@ class NeuralNetwork:
         # normalize all weights so they don't explode
         # self.w[0] = [normalize(wjk) for wjk in self.w[0]]
         # self.w[1] = [normalize(wij) for wij in self.w[1]]
-        self.w[0] = normWeights(self.w[0])
-        self.w[1] = normWeights(self.w[1])
+        self.w[0] = self.normWeights(self.w[0])
+        self.w[1] = self.normWeights(self.w[1])
         self.w0[0] = normalize(self.w0[0])
         self.w0[1] = normalize(self.w0[1])
         
     
-    def run(self, x, ytrue, training = False, epochs = 125, stoch = True, dropout = False, 
+    def run(self, x: list[list[float]], ytrue: list[int], training = False, epochs = 125, stoch = True, dropout = False, 
             eta = .001, alpha = .3, op_H = .75, op_L = .25, gamma = 1, rho_target = .01, lagrange = .001): 
         """
         Define function for training the neural network.
@@ -365,6 +411,7 @@ class NeuralNetwork:
         rho_target : constant.
         lagrange : constant.
         """
+        
         # self.x = [ELU(image) for image in x] # NOTE: I haven't started a run since changing this yet
         self.x = [[ELU(pixel) for pixel in image] for image in x]
         self.ytrue = ytrue
@@ -375,14 +422,18 @@ class NeuralNetwork:
         self.gamma = gamma
         self.rho_targ = rho_target
         self.lagrange = lagrange
+        
         # number of images in dataset
         self.Q = len(x)
+        
         # binary nested array, each row is for an epoch. 
         # in each row is a binary digit for each stochastically chosen image in the set, 
         # a 1 if the image was classified correctly, and 0 if not
         self.errs = []
+        
         # array of length of epochs parameter, contains the error fraction for each epoch
         self.err_frac = []
+        
         # nested array of J2 at each point in training, sublist for each epoch
         # each sublist contains each image's Jq in epoch
         self.Jq = []
@@ -430,6 +481,7 @@ class NeuralNetwork:
                 if dropout == True: 
                     h_idxs = list(np.random.choice(range(self.M), random.randint(self.M // 6, self.M - 1), replace=False))
                     self.h[q] = self.activFuncHidden(q, h_idxs)
+               
                 # if not true, then all hidden neurons will be considered
                 else: 
                     self.h[q] = self.activFuncHidden(q)
@@ -520,6 +572,28 @@ class NeuralNetwork:
                 else: 
                     plt.show()
             
+    
+    def normWeights(self, lst: list[list[float]]): 
+        """
+        Full function version for normalizing weight arrays according to overall
+        max and min, rather than the max and min of the sublist. 
+
+        Parameters
+        ---------------------------------------------------------
+        lst : a 2D list containing a layer of weights. 
+    
+        Output
+        ---------------------------------------------------------
+        norm_w : a 2D list containing the normalized layer of weights. 
+        """
+    
+        o_max = np.nanmax(lst)
+        o_min = np.nanmin(lst)
+        norm_w = []
+        for sublist in lst: 
+            norm_w += [[((el - o_min) / (o_max - o_min)) * 2 - 1 for el in sublist]]
+        return norm_w
+     
             
     def MSE(self):
         """
@@ -547,10 +621,8 @@ class NeuralNetwork:
         # overall J across all epochs
         self.J = sum(self.Jq)
         
-    # returns the average of the last sublist element of self.Jq, 
-    # the up-to-date loss value
-    # epoch parameter is default set to -1 to reverse-index the last element
-    def getJq(self, epoch = -1):
+
+    def getJq(self, epoch: int = -1):
         """
         Returns the average of the last sublist element of self.Jq, the 
         up-to-date loss value. 
@@ -561,14 +633,14 @@ class NeuralNetwork:
                 reverse-index the last element. Default is always used
                 in the written code, currently. 
     
-        Output
+        Returns
         ----------------------------------------------------------------
         The average loss value for the given epoch (default the latest).
         """
         return np.average(self.Jq[epoch])
     
-    # error fraction calculator
-    def errFrac(self, q = None):
+    
+    def errFrac(self, q: int = None):
         """
         Error fraction calculator. 
         
@@ -576,7 +648,7 @@ class NeuralNetwork:
         --------------------------------------------------------
         q : a given image in the dataset? Defaults to self.Q.
         
-        Output
+        Returns
         --------------------------------------------------------
         errFrac : the error fraction, total number of wrong
                   digit classifications divided by total digits.
@@ -592,20 +664,21 @@ class NeuralNetwork:
         return errs / total
 
     
-    def enforceBinary(self, lst): 
+    def enforceBinary(self, lst: list): 
         """
         Enforce the binary threshold parameters op_H and op_L on given list lst, 
         so that all elements of lst >= op_H are set to 1 and all elements of 
         lst <= op_L are set to 0. The resultant list is returned as a new list. 
         
-         Parameters
+        Parameters
         --------------------------------------------------------------------------
         lst : the given list to enforce the binary thresholds on. 
         
-         Output
+        Returns
         --------------------------------------------------------------------------
         lst_bin : new list for which the binary threshold parameters are enforced.
-         """
+        """
+        
         lst_bin = []
         
         for el in lst: 
@@ -619,7 +692,7 @@ class NeuralNetwork:
         return lst_bin      
       
     
-    def plotFeatures(self, colormap="bone"): 
+    def plotFeatures(self, colormap: str = "bone"): 
         """ 
         Plot randomly selecteed 20 hidden neurons as heatmaps.
         
@@ -632,21 +705,24 @@ class NeuralNetwork:
         # feats = [i for i in range(20)]
         feats = [int(el) for el in np.random.choice(self.M, min(20, self.M), replace=False)]
         plt.figure()
+        
         for ii in range(min(20, self.M)): 
             # if the header neuron is an untouched one or if the index is a duplicate in the list,
             # change it
             # while len(self.h[int(feats[ii])]) <= 1:
             while len(self.h[feats[ii]]) <= 1 and sum([int(np.isin(feats, [feats[ii]])[idx]) for idx in range(len(feats))]) != 1: 
                 feats[ii] = np.random.choice(self.M)
+                
             plt.subplot(4, 5, ii + 1)
             plotImage(self.w[0][feats[ii]], cmap=colormap)    # plotImage() function from my functions.py file
             plt.title("Hidden Neuron " + str(feats[ii] + 1), fontweight="bold", fontsize=9)
             plt.xticks(range(0, 28, 7), fontsize=6)
             plt.yticks(range(0, 28, 7), fontsize=6)
+            
         plt.suptitle("Figure 2.4: Sample Hidden Neurons' Features", fontweight="bold", fontsize=11)
         
     
-    def plotSampleOutputs(self, origColor = "bone", outputColor = "bone"): 
+    def plotSampleOutputs(self, origColor: str = "bone", outputColor: str = "bone"): 
         """
         Randomly chooses 8 samples from the set to plot the original input image
         and the reconstructed output image as heatmaps. 
@@ -664,6 +740,7 @@ class NeuralNetwork:
             # if the index is a duplicate in the list, change it
             while self.y[samples[ii]] == 0.0 or len(self.y[samples[ii]]) <= 1 and sum([int(np.isin(samples, [samples[ii]])[idx]) for idx in range(len(samples))]) != 1: 
                 samples[ii] = np.random.choice(self.Q)
+            
             # plot original image
             plt.subplot(2, 8, ii + 1)
             plotImage(self.x[samples[ii]], origColor)
@@ -698,7 +775,7 @@ class NeuralNetwork:
             plt.yticks([])
             
 
-    def plotAllOutputs(self, outputColor = "bone"): 
+    def plotAllOutputs(self, outputColor: str = "bone"): 
         """
         Plots all the outputs as heatmaps in two figures as heatmaps. Hardcoded
         for a set of 2000 images, putting 1000 in each figure.  
@@ -729,19 +806,6 @@ class NeuralNetwork:
         plt.suptitle("Output Heatmaps 1001-2000", fontweight="bold", fontsize=11)
             
     
-    # def plotHeatmapsWIJ(self): 
-        # """
-          # Plot input-to-hidden layer weights for each number as heat map images. 
-          # """
-    #     plt.figure()
-    #     for ii in range(self.L):
-    #         plt.subplot(5, 2, ii + 1)
-    #         # plotImage() function from my functions.py file
-    #         plotImage(self.w[1][ii], cmap="bone")
-        
-    #     plt.suptitle("Weight Heatmaps for Digits", loc="center", fontweight="bold")
-    
-    
     def plotStats(self): 
         """
         Plot the J2 loss and error fraction. 
@@ -753,6 +817,7 @@ class NeuralNetwork:
                     color="xkcd:shamrock green")
             plt.xlabel("Epochs", fontweight="bold", fontsize=10)
             plt.ylabel("Loss", fontweight="bold", fontsize=10)
+            
             # total images shown (duplicates included) / amount of images (duplicates not included)
             # plt.xticks([x for x in range(0, len(self.Jq), int(len(self.Jq) / 5))])
             plt.title("Figure 2.3: J2 Loss Function Over Time", fontweight="bold", fontsize=11)

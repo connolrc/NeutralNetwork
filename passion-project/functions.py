@@ -1,14 +1,26 @@
-# HW3 functions.py
+# passion-project functions.py
 
-from io import TextIOWrapper
 import matplotlib.pyplot as plt
 import numpy as np
 import linecache as lc
 import math
 
-# read lines from the given text file
-# return list of 28x28 float matrices which are the images I GUESS 
-def convertFileToImages(filename): 
+
+def convertFileToImages(filename: str): 
+    """
+    Reads lines from the given text file. 
+    Returns list of 28x28 float matrices, which are the images. 
+    
+    Parameters
+    ----------------------------------------------------------
+    filename : a str that is the name of the text file 
+               containing the image data. 
+               
+    Returns
+    ----------------------------------------------------------
+    datalist : a list where each element is a 28x28 matrix
+               representing an image from the file. 
+    """
     # open the file
     textfile = open(filename, "r")
     
@@ -22,41 +34,51 @@ def convertFileToImages(filename):
         datalist += [convertListToImage(readDataLine(filename, row))]
         row += 1
     
+    textfile.close()
     # datalist = np.transpose(datalist)
     return datalist
     
 
-# read line of data (one image) from given row in given file
-# return 1x784 list of floats
-def readDataLine(filename, row): 
+def readDataLine(filename: str, row: int): 
+    """
+    Read line of data (one image) from given row in given file.
+    Return 1x784 list of floats. 
+    
+    Parameters 
+    ---------------------------------------------------------------
+    filename : the name of the text file containing the image data.
+    row : the number row which to read the data of. 
+    
+    Returns
+    ---------------------------------------------------------------
+    dataline : the image data from the rowth line of filename, as a
+               list of floats. 
+    """
     # convert the .txt file line to a list
     dataline = lc.getline(filename, row).split()
     dataline = [float(x) for x in dataline]
     
     return dataline
 
-# # read the first line from given image file 
-# def readDataLine(filename): 
-#     # open the file
-#     if type(filename) == str: 
-#         image_txt = open(filename, "r") 
-#     # or bypass this step if it's already a file
-#     elif type(filename) == TextIOWrapper: 
-#         image_txt = filename
-    
-#     # convert the .txt file line to a list
-#     dataline = image_txt.readline().split()
-#     dataline = [float(x) for x in dataline]
-    
-#     return dataline
 
+def convertListToImage(dataline: list[float]):
+    """
+    By default, convert a 1x784 list of floats representing
+    an image into a 28x28 matrix of floats, to be able to 
+    plot a heatmap of the image. 
+    
+    Otherwise, convert to a square matrix if possible, or 
+    closest it can. TODO: This last part simply cannot be.
 
-# by default, convert a 1x784 list of floats into a 
-# 28x28 matrix of floats
-# return 28x28 matrix of floats
-# otherwise, convert to a square matrix if possible, 
-# or closest it can
-def convertListToImage(dataline): 
+    Parameters
+    --------------------------------------------------------
+    dataline : a one-dimensional list of floats, by default 
+               1x784. Contains an image's data. 
+    
+    Returns
+    --------------------------------------------------------
+    image_matrix : a square matrix of floats, 28x28 default. 
+    """
     # convert the 1x784 list to a 28x28 matrix
     image_matrix = np.array(dataline)
     if len(image_matrix) == 784: 
@@ -73,8 +95,19 @@ def convertListToImage(dataline):
     
     return image_matrix
 
-# generate a plot from the given 28x28 float matrix
-def plotImage(image_array, cmap="autumn"): 
+
+def plotImage(image_array: str, cmap = "autumn"): 
+    """
+    Generate a heatmap plot from the given square float matrix
+    representing an image. If the given image is in list form,
+    call convertListToImage() first.
+    
+    Parameters
+    -------------------------------------------------------------
+    image_array : a matrix of floats representing an image.
+                  Square by default, 28x28 by more default.
+    cmap : the color scheme for the heatmap. Default of "autumn". 
+    """
     if len(np.shape(image_array)) != 1: 
         plt.imshow(image_array, cmap, interpolation = "nearest")
     else: # if it is in 1x784 vector form...
@@ -82,10 +115,22 @@ def plotImage(image_array, cmap="autumn"):
     #plt.show()
 
 
-# create a list containing the contents of an image file.
-# the same as convertFileToImage() except it keeps the 
-# pixel values subarray 1x784 instead of converting it to 28x28. 
-def convertFileToList2D(filename): 
+def convertFileToList2D(filename: str) -> list[list[float]]: 
+    """
+    Create a list containing the contents of an image file. The 
+    same as convertFileToImage() except it keeps the pixel 
+    values subarray 1x784 instead of converting it to 28x28. 
+    
+    Parameters
+    --------------------------------------------------------------
+    filename : the name of the text file containing the images'
+               data. 
+               
+    Returns
+    --------------------------------------------------------------
+    datalist : two-dimensional list where each element is a
+               1x784 vector of floats containing one image's data. 
+    """
     # open the file
     textfile = open(filename, "r")
     
@@ -101,8 +146,21 @@ def convertFileToList2D(filename):
     return datalist
 
 
-# create a list containing the contents of a label file
-def convertFileToList1D(filename, datatype="int"): 
+def convertFileToList1D(filename: str, datatype = "int"): 
+    """
+    Create a list containing the contents of a label text file.
+    
+    Parameters
+    -------------------------------------------------------------
+    filename : name of the text file containing the image labels.
+    datatype : a str containing the data type as which to store
+               the labels. Defaults to "int". 
+               
+    Returns
+    -------------------------------------------------------------
+    datalist : a one-dimensional list containing the labels for
+               the images. 
+    """
     # open the file
     textfile = open(filename, "r")
     
@@ -118,11 +176,23 @@ def convertFileToList1D(filename, datatype="int"):
     return datalist
     
     
-# writes the contents of a list into the given file
-def writeListToFile(filename, lst, textformat = "%.6f"): 
+def writeListToFile(filename: str, lst: list, textformat = "%.6f"): 
+    """
+    Writes the contents of a list into the given text file.
+    Essentially a wrapper function for numpy's savetext(). 
+    
+    Parameters
+    ---------------------------------------------------------
+    filename : the name of an existing file to store the list 
+               in, or what to name the new file created. 
+    lst : the list whose data to store in the file. 
+    textformat : tells numpy's savetext() how to format the
+                 text in the file. Default is with 6 digits 
+                 right of the decimal. 
+    """
     # open the file
     textfile = open(filename, "w")
-    arr = np.array(lst)
+    # arr = np.array(lst)
     np.savetxt(textfile, lst, fmt=textformat)
     textfile.close()
     
@@ -136,7 +206,22 @@ def writeListToFile(filename, lst, textformat = "%.6f"):
 #     textfile.close()
 
 
-def removeEmptySublists(lst): 
+def removeEmptySublists(lst: list[list]): 
+    """
+    Removes empty sublists, or non-list elements, in a given
+    list of at least two dimensions. Used for saving list
+    data to a text file in the writeListToFile() function.
+    
+    Parameters
+    --------------------------------------------------------
+    lst : a list of at least two dimensions. 
+    
+    Returns
+    --------------------------------------------------------
+    lst_copy : a copy of lst with empty sublists and non-
+               list elements removed. 
+    """
+    
     lst = list(lst)
     lst_copy = lst.copy()
     for sublist in lst: 
@@ -146,124 +231,33 @@ def removeEmptySublists(lst):
             lst_copy.remove(sublist)
     return lst_copy
 
-def absMax(lst): 
+def absMax(lst: list[list]): 
+    """
+    Returns the maximum element of a multi-dimensional list. 
+    (A single value, not a list of maxes of each sublist.)
+    
+    Parameters
+    --------------------------------------------------------
+    lst : a multi-dimensional list of which to find the max.
+    
+    Returns
+    --------------------------------------------------------
+    absMax : the max value found in lst. 
+    """
     return np.nanmax(np.absolute(lst))
 
-def absMin(lst): 
+def absMin(lst: list[list]): 
+    """
+    Returns the minimum element of a multi-dimensional list. 
+    (A single value, not a list of mins of each sublist.)
+    
+    Parameters
+    --------------------------------------------------------
+    lst : a multi-dimensional list of which to find the min.
+    
+    Returns
+    --------------------------------------------------------
+    absMax : the min value found in lst. 
+    """
     return np.nanmin(np.absolute(lst))
-    
-    
-# determines correctness of given test output, 
-# according to given list of correct labels
-
-class TestResults: 
-    
-    # constructor
-    def __init__(self, test_output, answer_key): 
-        self.test_output = test_output
-        self.answer_key = answer_key
-        
-        self.numRuns = len(self.test_output) // len(self.answer_key)
-        self.true_pos = [0] * self.numRuns       # 1s identified as 1
-        self.true_neg = [0] * self.numRuns       # 0s identified as 0
-        self.false_pos = [0] * self.numRuns      # 0s identified as 1
-        self.false_neg = [0] * self.numRuns      # 1s identified as 0
-        
-        self.tallyResults()
-        self.calcMetrics()
-        
-    # count up pos and neg (true/false)
-    def tallyResults(self): 
-        for i in range(len(self.test_output)): 
-            if self.test_output[i] == 0: 
-                # modulo % since the answer key is 200 lines but the test
-                # output is far more, so the answer key's index will loop
-                # back around to 0 right before it gets out of bounds
-                if self.answer_key[i % len(self.answer_key)] == 0: 
-                    # integer division // so each 200 test outputs will all
-                    # go into the same index in the tally lists
-                    self.true_neg[i // len(self.answer_key)] += 1
-                else: 
-                    self.false_neg[i // len(self.answer_key)] +=1 
-            else: # test_output[i] == 1: 
-                if self.answer_key[i % len(self.answer_key)] == 0: 
-                    self.false_pos[i // len(self.answer_key)] += 1
-                else: 
-                    self.true_pos[i // len(self.answer_key)] += 1
-        
-    def calcMetrics(self): 
-        self.recall = []
-        self.precision = []
-        self.F1_score = []
-        self.specificity = []
-        for n in range(len(self.test_output) // len(self.answer_key)): 
-            # RECALL: selectivity, true positive rate. 
-            # fraction of positives identified.
-            # how much of what's true is in fact identified as true. 
-            # true positives / all positives in data
-            # Q11 / (Q11 + Q10)
-            self.recall += [self.true_pos[n] / (self.true_pos[n] + self.false_neg[n])]
-            
-            # PRECISION: positive predictive value
-            # fraction of identified positives that are correct. 
-            # how much of what's identified as true is in fact true. 
-            # true positives / all classified as positive
-            # Q11 / (Q11 + Q01)
-            if self.true_pos[n] == 0: 
-                self.precision += [0]
-            else: 
-                self.precision += [self.true_pos[n] / (self.true_pos[n] + self.false_pos[n])]
-            
-            # F1 Score: combines precision and recall into one metric. 
-            if self.precision[n] == 0 or self.recall[n] == 0: 
-                self.F1_score == 0
-            else:     
-                self.F1_score += [2 * (self.precision[n] * self.recall[n]) / (self.precision[n] + self.recall[n])]
-    
-            # SPECIFICITY: selectivity, true negative rate 
-            # fraction of negatives identified
-            # true negatives / (false positives + true negatives)
-            # Q00 / (Q01 + Q00)
-            if self.true_neg[n] == 0: 
-                self.specificity += [0]
-            else: 
-                self.specificity += [self.true_neg[n] / (self.false_pos[n] + self.true_neg[n])]
-    
-    # FOR THE CHALLENGE SET: 
-    # counts the amount of each digit 2-9 counted as 0 and as 1. 
-    def countNumClass(self): 
-        # declare 2x8 array in which to store counts of each 
-        # number's classifications as 0 or 1. 
-        # elements initialized to 0 for summation in 
-        # subsequent for loop. 
-        self.num_classes = [[0] * 8] + [[0] * 8]
-        
-        # step through output, check if each is a number 2-9. 
-        # if so, get its specific value and use that as the col index 
-        # with the test's output as the row index to increment the 
-        # corresponding element in the 2x8 num_classes array. 
-        for t in range(len(self.test_output)): 
-            if self.answer_key[t] >= 2:     # unnecessary in this case, but on principle 
-                self.num_classes[self.test_output[t]][self.answer_key[t] - 2] += 1
-        
-    def printMetrics(self): 
-        for t in range(len(self.true_pos)): 
-            self.printNthTestMetrics(t)
-            
-    def printNthTestMetrics(self, t): 
-        print("--------- Test No. {:d} ---------" .format(t))
-        print("theta = " + str(t))
-        print("true pos = " + str(self.true_pos[t]))
-        print("true neg = " + str(self.true_neg[t]))
-        print("false pos = " + str(self.false_pos[t]))
-        print("false neg = " + str(self.false_neg[t]))
-        print("recall = " + str(self.recall[t]))
-        print("precision = " + str(self.precision[t]))
-        print("specificity = " + str(self.specificity[t]))
-        print("F1 score = " + str(self.F1_score[t]))
-        print("\n")
-            
-    def printBestTestMetrics(self): 
-        self.printNthTestMetrics(self.F1_score.index(max(self.F1_score)))
-        
     
