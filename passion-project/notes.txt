@@ -1,0 +1,8 @@
+- Autoencoders don't have weight biases?
+    - wait okay no there must be still...
+- rho calculation is very different between autoencoder of hw3p2 and whatever hw4p2 is
+
+AUTOENCODERS ARE hw3p2 and hw4p2
+
+Classifier.py's adjustWeights() function needs to be looked at intensely.   
+    - like why is backprop parameter a thing? Isn't it supposed to always be doing that in hw4p1

@@ -166,7 +166,7 @@ class NeuralNetwork:
             self.w[idx] = np.random.uniform(-a[idx], a[idx], (self.layer_dims[idx + 1], self.layer_dims[idx]))
             self.w0[idx] = np.random.uniform(-a[idx], a[idx], self.layer_dims[idx + 1])
             # self.w[idx] = np.random.normal(0, a[idx], (self.layer_dims[idx + 1], self.layer_dims[idx]))
-            np.random.normal
+            # np.random.normal
             # add arrays of 0s into the gradient weight tracker arrays
             self.wdelta[idx] = np.zeros_like(self.w[idx])
             self.w0delta[idx] = np.zeros_like(self.w0[idx])
@@ -696,7 +696,7 @@ class NeuralNetwork:
     
     def plotFeatures(self, colormap="bone"): 
         """ 
-        Plot randomly selecteed 20 hidden neurons as heatmaps.
+        Plot randomly selected 20 hidden neurons as heatmaps.
         
         Parameters
         --------------------------------------------------------
@@ -729,7 +729,7 @@ class NeuralNetwork:
         Parameters
         -------------------------------------------------------------------------
         origColor : the color scheme for the original images. Defaults to "bone".
-        outputColor: the color scheme for the output plot. Defaults to "bone". 
+        outputColor : the color scheme for the output plot. Defaults to "bone". 
         """
         
         samples = [int(el) for el in np.random.choice(self.Q, 8, replace=False)]
@@ -780,7 +780,7 @@ class NeuralNetwork:
      
         Parameters
         -------------------------------------------------------------------------
-        outputColor: the color scheme for the output plot. Defaults to "bone". 
+        outputColor : the color scheme for the output plot. Defaults to "bone". 
         """
         
         plt.figure()
