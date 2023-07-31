@@ -96,7 +96,7 @@ def convertListToImage(dataline: list[float]):
     return image_matrix
 
 
-def plotImage(image_array: str, cmap = "autumn"): 
+def plotImage(image_array: str, cmap = "bone"): 
     """
     Generate a heatmap plot from the given square float matrix
     representing an image. If the given image is in list form,
