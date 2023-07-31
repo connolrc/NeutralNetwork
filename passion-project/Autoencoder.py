@@ -297,7 +297,7 @@ class Autoencoder:
         return yq
                 
      
-    def adjustWeights(self, q: int, q_idxs: list[int]): 
+    def adjustWeights(self, q_idxs: list[int]): 
         """
         Adjust weights using backpropagation and momentum. 
         
@@ -308,103 +308,103 @@ class Autoencoder:
         q_idxs : a list of the elements of q for which to use 
                  in the rho calculations. 
         """
-        
-        # reset rho for this image
-        self.rho = [0.0] * self.M
-        
-        # the errors to propagate backwards
-        self.delta_qi = [0.0] * self.L
-        # the output y with the binary threshold parameters op_H and op_L enforced
-        # y_bin = self.enforceBinary(self.y[q])
-        
-        # calculate weights wij (for hidden-to-output)
-        # for every output neuron...
-        for i in range(self.L): 
-            # if isMatch(i) == False: 
-            # calculate delta_q[i] to use for every input neuron j's weight adjustment
-            # now for autoencoding reconstruction, it is x[q][i] - yhat[q][i] (generated y)
-            # instead of actual y - generated y 
-            self.delta_qi[i] = (self.x[q][i] - self.y[q][i]) * fprime(self.si[q][i])
+        for q in q_idxs: 
+            # reset rho for this image
+            self.rho = [0.0] * self.M
+            
+            # the errors to propagate backwards
+            self.delta_qi = [0.0] * self.L
+            # the output y with the binary threshold parameters op_H and op_L enforced
+            # y_bin = self.enforceBinary(self.y[q])
+            
+            # calculate weights wij (for hidden-to-output)
+            # for every output neuron...
+            for i in range(self.L): 
+                # if isMatch(i) == False: 
+                # calculate delta_q[i] to use for every input neuron j's weight adjustment
+                # now for autoencoding reconstruction, it is x[q][i] - yhat[q][i] (generated y)
+                # instead of actual y - generated y 
+                self.delta_qi[i] = (self.x[q][i] - self.y[q][i]) * fprime(self.si[q][i])
+                # for every hidden neuron...
+                for j in range(self.M): 
+                    # momentum = alpha * the current value stored in wdelta[1][i][j], 
+                    # as we are about to calculate the next at t, so this one is t - 1
+                    self.momentum_i = self.alpha * self.wdelta[1][i][j] 
+                    # calculate wdelta(t) (add the weight penalty for autoencoding regularization)
+                    self.wdelta[1][i][j] = self.eta * self.delta_qi[i] * self.h[q][j] + (self.lagrange * self.w[1][i][j])
+                    # update the weight with wdelta + momentum 
+                    self.w[1][i][j] += self.wdelta[1][i][j] + self.momentum_i
+                    
+                    # crazy experimental tangent function to try to stop explosions!!!!
+                    # self.w[1][i][j] = f1(self.w[1][i][j])
+
+                # update bias weight w0
+                self.momentum0_i = self.alpha * self.w0delta[1][i]
+                self.w0delta[1][i] = self.eta * self.delta_qi[i] + (self.lagrange * self.w0[1][i])
+                self.w0[1][i] += self.w0delta[1][i] + self.momentum0_i
+                
+                # crazy experimental tangent function to try to stop explosions!!!!
+                # self.w0[1][i] = f1(self.w0[1][i])
+                
+            self.w_max[1] += [np.nanmax(self.w[1])]
+            self.w_min[1] += [np.nanmin(self.w[1])]
+
+            # errors to propagate for input-to-hidden weights 
+            self.delta_qj = [0.0] * self.M 
+
+            # calculate weights wjk (for input-to-hidden)
             # for every hidden neuron...
             for j in range(self.M): 
-                # momentum = alpha * the current value stored in wdelta[1][i][j], 
-                # as we are about to calculate the next at t, so this one is t - 1
-                self.momentum_i = self.alpha * self.wdelta[1][i][j] 
-                # calculate wdelta(t) (add the weight penalty for autoencoding regularization)
-                self.wdelta[1][i][j] = self.eta * self.delta_qi[i] * self.h[q][j] + (self.lagrange * self.w[1][i][j])
-                # update the weight with wdelta + momentum 
-                self.w[1][i][j] += self.wdelta[1][i][j] + self.momentum_i
+                # calculate rho[j]
+                self.rho[j] = np.average([self.h[qq][j] for qq in q_idxs[0 : q_idxs.index(q) + 1]])
+                    
+                # sort of, at least... it's taking its place mathematically
+                self.delta_qj[j] = sum([self.w[1][i][j] * self.delta_qi[i] for i in range(self.L)]) 
+                
+                if self.rho[j] != 0.0 and self.rho[j] != 1.0:  # NOTE: how the hell did it equal 1.0
+                    self.delta_qj[j] -= (self.gamma * (((1 - self.rho_targ) / (1 - self.rho[j])) - (self.rho_targ / self.rho[j]))) 
+                else: # NOTE: maybe try gamma being bigger than 1??
+                    pass
+                
+                self.delta_qj[j] *= fprime(self.sj[q][j])     # TODO: wtf is going on here
+                
+                # for every input neuron...
+                for k in range(self.N): 
+                    # momentum = alpha * the current value stored in wdelta[1][i][j], 
+                    # as we are about to calculate the next at t, so this one is t - 1
+                    self.momentum_j = self.alpha * self.wdelta[0][j][k] 
+                    # calculate wdelta(t) (add the weight penalty for autoencoding regularization)
+                    self.wdelta[0][j][k] = self.eta * self.delta_qj[j] * self.x[q][k] + (self.lagrange * self.w[0][j][k])
+                    # update the weight with wdelta + momentum 
+                    self.w[0][j][k] += self.wdelta[0][j][k] + self.momentum_j
+                                    
+                    # crazy experimental tangent function to try to stop explosions!!!!
+                    # self.w[0][j][k] = f1(self.w[0][j][k])
+
+                # update bias weight w0
+                self.momentum0_j = self.alpha * self.w0delta[0][j]
+                self.w0delta[0][j] = self.eta * self.delta_qj[j] + (self.lagrange * self.w0[0][j])
+
+                self.w0[0][j] += self.w0delta[0][j] + self.momentum0_j
+                
+                self.features_lines[j].set(data=np.transpose(np.reshape(self.w[0][j], (28, 28))))
                 
                 # crazy experimental tangent function to try to stop explosions!!!!
-                # self.w[1][i][j] = f1(self.w[1][i][j])
-
-            # update bias weight w0
-            self.momentum0_i = self.alpha * self.w0delta[1][i]
-            self.w0delta[1][i] = self.eta * self.delta_qi[i] + (self.lagrange * self.w0[1][i])
-            self.w0[1][i] += self.w0delta[1][i] + self.momentum0_i
-            
-            # crazy experimental tangent function to try to stop explosions!!!!
-            # self.w0[1][i] = f1(self.w0[1][i])
-            
-        self.w_max[1] += [np.nanmax(self.w[1])]
-        self.w_min[1] += [np.nanmin(self.w[1])]
-
-        # errors to propagate for input-to-hidden weights 
-        self.delta_qj = [0.0] * self.M 
-
-        # calculate weights wjk (for input-to-hidden)
-        # for every hidden neuron...
-        for j in range(self.M): 
-            # calculate rho[j]
-            self.rho[j] = np.average([self.h[qq][j] for qq in q_idxs[0 : q_idxs.index(q) + 1]])
+                # self.w0[0][j] = f1(self.w0[0][j])
                 
-            # sort of, at least... it's taking its place mathematically
-            self.delta_qj[j] = sum([self.w[1][i][j] * self.delta_qi[i] for i in range(self.L)]) 
-            
-            if self.rho[j] != 0.0 and self.rho[j] != 1.0:  # NOTE: how the hell did it equal 1.0
-                self.delta_qj[j] -= (self.gamma * (((1 - self.rho_targ) / (1 - self.rho[j])) - (self.rho_targ / self.rho[j]))) 
-            else: # NOTE: maybe try gamma being bigger than 1??
-                pass
-            
-            self.delta_qj[j] *= fprime(self.sj[q][j])     # TODO: wtf is going on here
-            
-            # for every input neuron...
-            for k in range(self.N): 
-                # momentum = alpha * the current value stored in wdelta[1][i][j], 
-                # as we are about to calculate the next at t, so this one is t - 1
-                self.momentum_j = self.alpha * self.wdelta[0][j][k] 
-                # calculate wdelta(t) (add the weight penalty for autoencoding regularization)
-                self.wdelta[0][j][k] = self.eta * self.delta_qj[j] * self.x[q][k] + (self.lagrange * self.w[0][j][k])
-                # update the weight with wdelta + momentum 
-                self.w[0][j][k] += self.wdelta[0][j][k] + self.momentum_j
-                                
-                # crazy experimental tangent function to try to stop explosions!!!!
-                # self.w[0][j][k] = f1(self.w[0][j][k])
-
-            # update bias weight w0
-            self.momentum0_j = self.alpha * self.w0delta[0][j]
-            self.w0delta[0][j] = self.eta * self.delta_qj[j] + (self.lagrange * self.w0[0][j])
-
-            self.w0[0][j] += self.w0delta[0][j] + self.momentum0_j
-            
-            self.features_lines[j].set(data=np.transpose(np.reshape(self.w[0][j], (28, 28))))
-            
-            # crazy experimental tangent function to try to stop explosions!!!!
-            # self.w0[0][j] = f1(self.w0[0][j])
-            
-        # self.w[0] = self.normWeights(self.w[0])
-        # self.w0[0] = normalize(self.w0[0])
-            
-        self.w_max[0] += [np.nanmax(self.w[0])]
-        self.w_min[0] += [np.nanmin(self.w[0])]
-            
-        # normalize all weights so they don't explode
-        # self.w[0] = [normalize(wjk) for wjk in self.w[0]]
-        # self.w[1] = [normalize(wij) for wij in self.w[1]]
-        # self.w[0] = self.normWeights(self.w[0])
-        # self.w[1] = self.normWeights(self.w[1])
-        # self.w0[0] = normalize(self.w0[0])
-        # self.w0[1] = normalize(self.w0[1])
+            # self.w[0] = self.normWeights(self.w[0])
+            # self.w0[0] = normalize(self.w0[0])
+                
+            self.w_max[0] += [np.nanmax(self.w[0])]
+            self.w_min[0] += [np.nanmin(self.w[0])]
+                
+            # normalize all weights so they don't explode
+            # self.w[0] = [normalize(wjk) for wjk in self.w[0]]
+            # self.w[1] = [normalize(wij) for wij in self.w[1]]
+            # self.w[0] = self.normWeights(self.w[0])
+            # self.w[1] = self.normWeights(self.w[1])
+            # self.w0[0] = normalize(self.w0[0])
+            # self.w0[1] = normalize(self.w0[1])
         
     
     def run(self, x: list[list[float]], ytrue: list[int], training = False, epochs = 125, stoch = True, dropout = False, 
@@ -464,6 +464,9 @@ class Autoencoder:
         self.rho = []
         
         self.plotAllFeatures()
+        self.features_plot.suptitle("At Initialization", fontweight="bold", fontsize=6)
+        self.features_plot.canvas.draw()
+        self.features_plot.canvas.flush_events()
         
         # to make a line graph of it over time to see where it starts getting too bit
         self.w_max = [[], []]
@@ -501,7 +504,7 @@ class Autoencoder:
             if stoch == True: 
                 # generate uniformly stochastic list of images q to run through the 
                 # autoencoder for this epoch
-                q_idxs = list(np.random.choice(range(self.Q), random.randint(self.Q // 4, self.Q // 4 * 3), replace=False))
+                q_idxs = list(np.random.choice(range(self.Q), random.randint(self.Q // 8, self.Q // 4 * 3), replace=False))
             else: 
                 # then set it to use all ints 0-Q
                 q_idxs = range(self.Q)
@@ -516,7 +519,7 @@ class Autoencoder:
                 # if dropout is enabled, then randomly choose a subset of 
                 # hidden neurons to use to encourage diversity of features
                 if dropout == True:     # TODO: maybe try changing the upper bound for randint? smaller sample size might decrease uniformity
-                    h_idxs = list(np.random.choice(range(self.M), random.randint(1, int(self.M * .25)), replace=False))
+                    h_idxs = list(np.random.choice(range(self.M), random.randint(int(self.M * .05), int(self.M * .75)), replace=False))
                     self.h[q] = self.activFuncHidden(q, h_idxs)
                
                 # if not true, then all hidden neurons will be considered
@@ -533,14 +536,6 @@ class Autoencoder:
                 self.si_min += [min(min(self.si))]
                 
                 self.y[q] = self.activFuncOutput(q)
-                
-                if training == True: 
-                    # adjust the weights based on this image
-                    self.adjustWeights(q, q_idxs)
-                    
-                    self.features_plot.suptitle("Epoch {}, After Image {}".format(epoch, q_idxs.index(q)), fontweight="bold", fontsize=6)
-                    self.features_plot.canvas.draw()
-                    self.features_plot.canvas.flush_events()
                 
                 # calculate error fraction
                 # errs_q = sum([1 for ii in range(len(self.y[q])) if self.isCorrect(q, ii) == False])
@@ -574,8 +569,13 @@ class Autoencoder:
                     print("  Image #{:04d}  ".format(q + 1).center(110, '-'))
                     print("  {} out of {}  ---------  {:d}% through epoch  ".format(q_idxs.index(q), len(q_idxs), int(q_idxs.index(q) / len(q_idxs) * 100)).center(110, '-'))
                     
+            if training == True: 
+                    # adjust the weights based on this image
+                    self.adjustWeights(q_idxs)
                     
-
+                    self.features_plot.suptitle("Epoch {}".format(epoch + 1), fontweight="bold", fontsize=6)
+                    self.features_plot.canvas.draw()
+                    self.features_plot.canvas.flush_events()        
                     
                 # if DEBUG_FLAG == True and type(self.si[q]) == list: 
                 #     if any([s >= 1 for s in self.si[q]]): 
@@ -600,15 +600,15 @@ class Autoencoder:
                 
                 self.plotStats()
                 plt.suptitle("Epoch {:03d}" .format(epoch + 1), fontweight="bold")
-                self.plotFeatures()
-                plt.suptitle("Epoch {:03d}: Weight Heatmaps for Features" .format(epoch + 1), fontweight="bold")
+                # self.plotFeatures()
+                # plt.suptitle("Epoch {:03d}: Weight Heatmaps for Features" .format(epoch + 1), fontweight="bold")
                 # plt.savefig("HW4/problem2/saved data/epoch {} features.png".format(epoch + 1))
                 self.plotSampleOutputs()
                 plt.suptitle("Epoch {:03d}: Original vs Reconstruction Heatmaps" .format(epoch + 1), fontweight="bold")
                 # plt.savefig("HW4/problem2/saved data/epoch {} sample outputs.png".format(epoch + 1))
-                self.plotAllFeatures()
-                plt.suptitle("All Features at Epoch {:03d}".format(epoch + 1), fontweight="bold")
-                # plt.savefig("HW4/problem2/saved data/epoch {} all features.png".format(epoch + 1))
+                # self.plotAllFeatures()
+                # plt.suptitle("All Features at Epoch {:03d}".format(epoch + 1), fontweight="bold")
+                # # plt.savefig("HW4/problem2/saved data/epoch {} all features.png".format(epoch + 1))
                 
                 # if this is not the last epoch...
                 if epoch < epochs - 1:
